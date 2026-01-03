@@ -82,6 +82,10 @@ model User {
   sessions Session[]
   employees User[] @relation("HREmployees")
   hr User? @relation("HREmployees", fields: [hrId], references: [id], onDelete: SetNull)
+  attendances Attendance[]
+  timeOffs TimeOff[]
+  approvedTimeOffs TimeOff[] @relation("TimeOffApprovals")
+  rejectedTimeOffs TimeOff[] @relation("TimeOffRejections")
 }
 
 enum UserRole {
@@ -134,3 +138,74 @@ enum TokenTypes {
   EmailVerification
   PasswordReset
 }
+
+// Attendance model
+model Attendance {
+  id          String   @id @default(cuid())
+  userId      String
+  date        DateTime @db.Date
+  checkIn     DateTime?
+  checkOut    DateTime?
+  workHours   Float?   // in hours
+  extraHours  Float?   // in hours
+  breakHours  Float?   // in hours
+  status      AttendanceStatus @default(PRESENT)
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([userId, date])
+  @@index([date])
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LEAVE
+  HALF_DAY
+}
+
+// TimeOff model
+model TimeOff {
+  id            String        @id @default(cuid())
+  userId        String
+  timeOffType   TimeOffType
+  startDate     DateTime      @db.Date
+  endDate       DateTime      @db.Date
+  days          Float
+  status        TimeOffStatus @default(PENDING)
+  attachment    String?
+  notes         String?
+  approvedBy    String?
+  approvedAt    DateTime?
+  rejectedBy    String?
+  rejectedAt    DateTime?
+  rejectionReason String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  approver User? @relation("TimeOffApprovals", fields: [approvedBy], references: [id], onDelete: SetNull)
+  rejector User? @relation("TimeOffRejections", fields: [rejectedBy], references: [id], onDelete: SetNull)
+
+  @@index([userId, startDate])
+  @@index([status])
+  @@index([timeOffType])
+}
+
+enum TimeOffType {
+  PAID_TIME_OFF
+  SICK_LEAVE
+  UNPAID_LEAVE
+}
+
+enum TimeOffStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// Update User model to include time off relations
